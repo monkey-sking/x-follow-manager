@@ -45,7 +45,7 @@
       const core = value.core || {};
       const h = legacy.screen_name || core.screen_name || value.screen_name;
       if (h && (legacy.followers_count != null || legacy.following_count != null || value.relationship_perspective)) {
-        const rel = value.relationship_perspective || legacy.relationship_perspective || {};
+        const rel = value.relationship_perspectives || value.relationship_perspective || legacy.relationship_perspectives || legacy.relationship_perspective || {};
         state.networkData[String(h).toLowerCase()] = {
           followers: legacy.followers_count ?? value.followers_count ?? null,
           followingCount: legacy.friends_count ?? legacy.following_count ?? value.friends_count ?? null,
@@ -86,7 +86,8 @@
     #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; }
     #xfm-status { margin:7px 2px; line-height:1.45; white-space:pre-line; }
   `;
-  document.head.appendChild(css);
+  const mountStyle = () => (document.head || document.documentElement)?.appendChild(css);
+  if (document.head || document.documentElement) mountStyle(); else document.addEventListener('DOMContentLoaded', mountStyle, { once: true });
 
   const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
   const handle = cell => {

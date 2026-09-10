@@ -4,19 +4,6 @@
 
 Local userscript for X/Twitter. It detects mutual and non-mutual follows, reads user data from X page responses, and provides controlled conditional unfollow and follow-back actions.
 
-## 功能 / Features
-
-- `/following`：隐藏互关、筛选未回关、显示关注者/关注中数量。
-- `/following`: hide mutual follows, find non-followers, and show follower/following counts.
-- `/followers`：识别尚未回关的关注者，并手动执行回关。
-- `/followers`: find followers you do not follow back and follow them back manually.
-- 白名单、认证/保护账号排除、简介关键词条件。
-- Whitelist, verified/protected-account exclusions, and bio-keyword filters.
-- 默认预览、逐项勾选、每日上限和操作间隔。
-- Dry-run-first workflow, per-account selection, daily limits, and delays.
-- 数据只在当前浏览器本地处理，不发送到第三方服务。
-- Data is processed locally in the browser and is not sent to third-party services.
-
 ## 安装 / Installation
 
 安装 Tampermonkey、Violentmonkey 或 Userscripts 后，直接点击即可安装，无需复制粘贴：
@@ -29,6 +16,19 @@ After installing Tampermonkey, Violentmonkey, or Userscripts, click the link bel
 如果浏览器直接显示源码，请右键 raw 链接并选择使用脚本管理器安装。
 
 If the browser displays the raw source directly, right-click the raw link and choose your userscript manager's install option.
+
+## 功能 / Features
+
+- `/following`：隐藏互关、筛选未回关、显示关注者/关注中数量。
+- `/following`: hide mutual follows, find non-followers, and show follower/following counts.
+- `/followers`：识别尚未回关的关注者，并手动执行回关。
+- `/followers`: find followers you do not follow back and follow them back manually.
+- 白名单、认证/保护账号排除、简介关键词条件。
+- Whitelist, verified/protected-account exclusions, and bio-keyword filters.
+- 默认预览、逐项勾选、每日上限和操作间隔。
+- Dry-run-first workflow, per-account selection, daily limits, and delays.
+- 数据只在当前浏览器本地处理，不发送到第三方服务。
+- Data is processed locally in the browser and is not sent to third-party services.
 
 ## 使用 / Usage
 

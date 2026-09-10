@@ -276,7 +276,7 @@
     p.querySelector('#xfm-run').onclick=unfollowSelected;
     p.querySelector('#xfm-back-now').onclick=followBackVisible;
     p.querySelector('#xfm-hidepanel').onclick=()=>{ p.hidden=true; toggle.hidden=false; };
-    const followUs = document.createElement('button'); followUs.textContent='关注我们 @168888888888888'; followUs.title='打开我们的 X 主页'; followUs.onclick=()=>window.open(OUR_PROFILE_URL, '_blank', 'noopener'); p.insertBefore(followUs, p.querySelector('#xfm-hidepanel'));
+    const followUs = document.createElement('button'); followUs.textContent='关注作者'; followUs.title='关注作者 @168888888888888'; followUs.onclick=()=>window.open(OUR_PROFILE_URL, '_blank', 'noopener'); p.insertBefore(followUs, p.querySelector('#xfm-hidepanel'));
     toggle.onclick=()=>{ if(!moved) { p.hidden=false; toggle.hidden=true; } };
     scan();
   }

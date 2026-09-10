@@ -12,7 +12,12 @@
 
 ## 安装
 
-使用 Tampermonkey、Violentmonkey 或 Userscripts 新建脚本，将 `x-follow-manager.user.js` 全文粘贴进去。安装后刷新 X 页面。
+安装脚本管理器后，直接点击下面的链接即可安装，无需复制粘贴：
+
+- [一键安装脚本](https://raw.githubusercontent.com/monkey-sking/x-follow-manager/main/x-follow-manager.user.js)
+- [查看源码](https://github.com/monkey-sking/x-follow-manager/blob/main/x-follow-manager.user.js)
+
+如果浏览器直接显示源码，请右键链接并选择“使用 Tampermonkey/Violentmonkey 安装”，或将 raw 链接复制到脚本管理器的安装入口。安装后刷新 X 页面。
 
 ## 使用
 

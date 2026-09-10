@@ -100,7 +100,8 @@
     #xfm-panel button { border:0; border-radius:999px; padding:7px 11px; margin:3px; cursor:pointer; background:#1d9bf0; color:#fff; font-weight:600; }
     #xfm-panel button.warn { background:#f4212e; } #xfm-panel button.muted { background:#536471; }
     #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; border:1px solid #cfd9de; border-radius:8px; padding:6px; }
-    #xfm-toggle { position:fixed; right:18px; bottom:18px; z-index:100000; width:42px; height:42px; border:0; border-radius:50%; background:#1d9bf0; color:#fff; font-size:20px; cursor:pointer; box-shadow:0 4px 14px #0003; }
+    #xfm-toggle { position:fixed; left:18px; top:18px; z-index:100000; width:46px; height:46px; border:0; border-radius:14px; background:linear-gradient(145deg,#1d9bf0,#7856ff); color:#fff; cursor:grab; box-shadow:0 4px 14px #0003; padding:7px; touch-action:none; }
+    #xfm-toggle:active { cursor:grabbing; } #xfm-toggle svg { width:100%; height:100%; display:block; }
     #xfm-status { margin:7px 2px; line-height:1.45; white-space:pre-line; }
   `;
   const mountStyle = () => (document.head || document.documentElement)?.appendChild(css);
@@ -262,7 +263,12 @@
       <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea></details>
       <button id="xfm-hidepanel" class="muted">缩小面板</button>`;
     document.body.appendChild(p);
-    const toggle = document.createElement('button'); toggle.id='xfm-toggle'; toggle.title='显示 X Follow Manager'; toggle.textContent='⚙'; toggle.hidden=true; document.body.appendChild(toggle);
+    const toggle = document.createElement('button'); toggle.id='xfm-toggle'; toggle.title='显示 X Follow Manager'; toggle.innerHTML='<svg viewBox="0 0 46 46" aria-hidden="true"><path d="M10 10h26v26H10z" fill="none" stroke="white" stroke-width="2.5"/><path d="M15 28c5-1 7-9 9-9s4 8 9 9M15 17h16" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"/><circle cx="23" cy="23" r="3" fill="white"/></svg>'; toggle.hidden=true; document.body.appendChild(toggle);
+    const savedPos = JSON.parse(localStorage.getItem('x-follow-manager:toggle-position') || 'null'); if (savedPos) { toggle.style.left=`${savedPos.left}px`; toggle.style.top=`${savedPos.top}px`; }
+    let dragging=false, moved=false, dx=0, dy=0;
+    toggle.addEventListener('pointerdown', e => { dragging=true; moved=false; dx=e.clientX-toggle.offsetLeft; dy=e.clientY-toggle.offsetTop; toggle.setPointerCapture(e.pointerId); });
+    toggle.addEventListener('pointermove', e => { if(!dragging) return; moved=true; toggle.style.left=`${Math.max(4,Math.min(innerWidth-50,e.clientX-dx))}px`; toggle.style.top=`${Math.max(4,Math.min(innerHeight-50,e.clientY-dy))}px`; });
+    toggle.addEventListener('pointerup', e => { if(!dragging) return; dragging=false; toggle.releasePointerCapture(e.pointerId); if(moved) localStorage.setItem('x-follow-manager:toggle-position', JSON.stringify({left:toggle.offsetLeft,top:toggle.offsetTop})); });
     const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));
     p.querySelector('#xfm-scan').onclick=scan;
@@ -271,7 +277,7 @@
     p.querySelector('#xfm-back-now').onclick=followBackVisible;
     p.querySelector('#xfm-hidepanel').onclick=()=>{ p.hidden=true; toggle.hidden=false; };
     const followUs = document.createElement('button'); followUs.textContent='关注我们 @168888888888888'; followUs.title='打开我们的 X 主页'; followUs.onclick=()=>window.open(OUR_PROFILE_URL, '_blank', 'noopener'); p.insertBefore(followUs, p.querySelector('#xfm-hidepanel'));
-    toggle.onclick=()=>{ p.hidden=false; toggle.hidden=true; };
+    toggle.onclick=()=>{ if(!moved) { p.hidden=false; toggle.hidden=true; } };
     scan();
   }
   const tick = () => {

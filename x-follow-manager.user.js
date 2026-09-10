@@ -43,6 +43,8 @@
   }, JSON.parse(localStorage.getItem(KEY) || '{}'));
   state.selected = new Set(state.selected || []);
   let actionRunning = false;
+  let refreshTimer = null;
+  const scheduleRefresh = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => { if (document.body) scan(); }, 80); };
   const LIST_GRAPHQL_RE = /\/graphql\/[^/]+\/(?:Following|Followers|BlueVerifiedFollowers|FollowersYouKnow)(?:$|\?)/;
   const requestUrl = input => typeof input === 'string' ? input : input?.url || '';
   const isRelevantGraphQL = url => { try { return LIST_GRAPHQL_RE.test(new URL(url, location.href).pathname); } catch (_) { return false; } };
@@ -70,7 +72,7 @@
       }
       Object.values(value).forEach(walk);
     };
-    try { walk(payload); save(); } catch (_) { /* X 响应结构变化时静默回退 DOM */ }
+    try { walk(payload); save(); scheduleRefresh(); } catch (_) { /* X 响应结构变化时静默回退 DOM */ }
   };
   const installNetworkObserver = () => {
     const originalFetch = window.fetch;
@@ -287,5 +289,11 @@
       else { document.querySelector('#xfm-panel')?.remove(); document.querySelector('#xfm-toggle')?.remove(); }
     } catch (error) { console.warn('[X Follow Manager] initialization failed', error); }
   };
+  const domObserver = new MutationObserver(records => {
+    const relevant = records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n.nodeType === 1 && !n.matches?.('.xfm-check,.xfm-network-data,.xfm-hover-data,#xfm-panel,#xfm-toggle') && !n.closest?.('#xfm-panel')));
+    if (relevant) scheduleRefresh();
+  });
+  const observeDom = () => { if (document.body) domObserver.observe(document.body, { childList: true, subtree: true }); };
+  if (document.body) observeDom(); else document.addEventListener('DOMContentLoaded', observeDom, { once: true });
   setInterval(tick, 1500); tick();
 })();

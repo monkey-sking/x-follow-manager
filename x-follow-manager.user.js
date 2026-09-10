@@ -216,7 +216,9 @@
     });
     save();
     const s = document.querySelector('#xfm-status');
-    if (s) s.textContent = `本屏：互关 ${mutual} · 未回关 ${candidates} · 符合条件 ${eligible}\n已勾选 ${state.selected.size} · ${state.dryRun ? '预览模式' : '执行模式'}`;
+    if (s) s.textContent = `本屏：互关 ${mutual} · 未回关 ${candidates} · 符合条件 ${eligible}\n${state.dryRun ? '预览模式' : '执行模式'}`;
+    const runButton = document.querySelector('#xfm-run'); if (runButton) runButton.textContent = `取消关注（${state.selected.size || eligible}）个`;
+    const backButton = document.querySelector('#xfm-back-now'); if (backButton) backButton.textContent = `回关（${userCells().filter(c => !!followButton(c) && isFollowerSafe(c, state.networkData[handle(c)?.toLowerCase()])).length}）个`;
   }
 
   const buttonByText = (root, names) => [...root.querySelectorAll('button')].find(b => names.some(n => text(b).includes(n)));
@@ -225,7 +227,7 @@
     assertOwnList(); if (!location.pathname.endsWith('/following')) return alert('请在自己的正在关注页面执行取关。');
     if (!confirm('即将取关已选账号。确定继续？')) return;
     actionRunning = true;
-    const cells = userCells().filter(c => state.selected.has(handle(c)?.toLowerCase()));
+    const cells = state.selected.size ? userCells().filter(c => state.selected.has(handle(c)?.toLowerCase())) : userCells().filter(c => c.classList.contains('xfm-target'));
     let done = 0; try { for (const cell of cells) {
       const b=unfollowButton(cell); if(!b) continue;
       if(document.querySelector('[data-testid="confirmationSheetConfirm"]')) throw new Error('页面已有未处理确认框。');
@@ -253,8 +255,8 @@
     p.innerHTML = `<h3>X Follow Manager</h3><div id="xfm-status">扫描中…</div>
       <details open><summary>功能 / Actions</summary>
       <label><input id="xfm-hide" type="checkbox" ${state.hideMutual?'checked':''}> 隐藏互关</label><br>
-      <button id="xfm-scan">重新扫描</button><button id="xfm-select">选中本屏符合条件</button><br><button id="xfm-back-now">回关当前列表未关注账号</button>
-      <button id="xfm-run" class="warn">执行已勾选取关</button></details>
+      <button id="xfm-scan">重新扫描</button><br><button id="xfm-back-now">回关（0）个</button>
+      <button id="xfm-run" class="warn">取消关注（0）个</button></details>
       <details><summary>设置 / Settings</summary>
       <label>至少关注天数 <input id="xfm-age" type="number" min="0" value="${state.minAgeDays}"></label>
       <label>间隔(ms) <input id="xfm-delay" type="number" min="2000" value="${state.delayMs}"></label><br>
@@ -274,7 +276,6 @@
     const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));
     p.querySelector('#xfm-scan').onclick=scan;
-    p.querySelector('#xfm-select').onclick=()=>{ document.querySelectorAll('.xfm-check:not(:disabled)').forEach(x=>{x.checked=true; const h=handle(x.closest('[data-testid="UserCell"]') || x.closest('button'))?.toLowerCase(); if(h) state.selected.add(h);}); save(); scan(); };
     p.querySelector('#xfm-run').onclick=unfollowSelected;
     p.querySelector('#xfm-back-now').onclick=followBackVisible;
     p.querySelector('#xfm-hidepanel').onclick=()=>{ p.hidden=true; toggle.hidden=false; };

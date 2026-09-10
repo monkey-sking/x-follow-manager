@@ -1,12 +1,17 @@
 // ==UserScript==
 // @name         X Follow Manager - 互关与条件取关
 // @namespace    local.x-follow-manager
-// @version      1.0.0
-// @description  扫描 X 正在关注列表：隐藏互关、识别未回关，并按白名单/账号类型/关注时长/每日上限条件取关。默认预览，不自动执行。
+// @version      1.1.0
+// @description  X 关注管理：网络数据解析、互关识别、未回关条件取关、关注者自动回关、白名单、限速与每日上限。
+// @author       monkey-sking
+// @homepageURL  https://github.com/monkey-sking/x-follow-manager
+// @supportURL   https://github.com/monkey-sking/x-follow-manager/issues
 // @match        https://x.com/*/following
 // @match        https://x.com/*/followers
+// @match        https://x.com/*/verified_followers
 // @match        https://twitter.com/*/following
 // @match        https://twitter.com/*/followers
+// @match        https://twitter.com/*/verified_followers
 // @run-at       document-start
 // @grant        none
 // @noframes
@@ -88,10 +93,11 @@
   css.textContent = `
     .xfm-mutual { opacity:.16!important; }
     .xfm-target { outline:2px solid #f4212e!important; background:rgba(244,33,46,.08)!important; }
-    #xfm-panel { position:fixed; right:14px; top:70px; z-index:99999; width:310px; padding:12px; color:#0f1419; background:#fff; border:1px solid #cfd9de; border-radius:14px; box-shadow:0 6px 24px #0002; font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    #xfm-panel { position:fixed; right:14px; top:70px; z-index:99999; width:350px; max-height:calc(100vh - 90px); overflow:auto; padding:16px; color:#0f1419; background:#fff; border:1px solid #cfd9de; border-radius:16px; box-shadow:0 8px 30px #0003; font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    #xfm-panel h3 { margin:0 0 5px; font-size:16px; } #xfm-panel .xfm-section { border-top:1px solid #eff3f4; margin-top:12px; padding-top:10px; }
     #xfm-panel button { border:0; border-radius:999px; padding:7px 11px; margin:3px; cursor:pointer; background:#1d9bf0; color:#fff; font-weight:600; }
     #xfm-panel button.warn { background:#f4212e; } #xfm-panel button.muted { background:#536471; }
-    #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; }
+    #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; border:1px solid #cfd9de; border-radius:8px; padding:6px; }
     #xfm-status { margin:7px 2px; line-height:1.45; white-space:pre-line; }
   `;
   const mountStyle = () => (document.head || document.documentElement)?.appendChild(css);
@@ -111,7 +117,7 @@
   const isMutualSafe = (cell, nd) => {
     if (cell.querySelector('[data-testid="userFollowIndicator"]')) return true;
     if (location.pathname.endsWith('/following')) return nd?.followedBy === true;
-    if (location.pathname.endsWith('/followers')) return nd?.following === true;
+    if (location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers')) return nd?.following === true;
     return nd?.following === true && nd?.followedBy === true;
   };
   const followButton = cell => [...cell.querySelectorAll('[data-testid$="-follow"],button,[role="button"]')].find(x => {
@@ -125,7 +131,7 @@
     const observer=new MutationObserver(()=>{const el=document.querySelector(selector);if(el){observer.disconnect();clearTimeout(timer);resolve(el);}});
     observer.observe(document.documentElement,{childList:true,subtree:true}); const timer=setTimeout(()=>{observer.disconnect();resolve(null);},timeout);
   });
-  const pageOwner = () => location.pathname.match(/^\/([^/]+)\/(?:following|followers)\/?$/)?.[1]?.toLowerCase() || null;
+  const pageOwner = () => location.pathname.match(/^\/([^/]+)\/(?:following|followers|verified_followers)\/?$/)?.[1]?.toLowerCase() || null;
   const loggedInHandle = () => { const a=document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]'); return (text(a).match(/@([A-Za-z0-9_]+)/)||[])[1]?.toLowerCase() || null; };
   const assertOwnList = () => { const me=loggedInHandle(), owner=pageOwner(); if (!me || !owner || me!==owner) throw new Error('安全保护：仅允许在当前登录账号自己的列表页执行操作。'); };
   const localDay = () => new Date().toISOString().slice(0,10);
@@ -222,7 +228,7 @@
   }
 
   async function followBackVisible() {
-    if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!location.pathname.endsWith('/followers')) return alert('请在自己的关注者页面执行回关。'); if (!state.autoFollowBack) return;
+    if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!(location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers'))) return alert('请在自己的关注者页面执行回关。'); if (!state.autoFollowBack) return;
     const candidates = userCells().filter(b => !!followButton(b));
     if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，最多执行 ${state.dailyLimit} 个？`)) return;
     actionRunning=true; let done=0; try { for(const cell of candidates){ if(!remainingToday()) break; const b=followButton(cell); if(!b) continue; b.click(); recordAction('follow'); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
@@ -231,7 +237,7 @@
   function panel() {
     if (document.querySelector('#xfm-panel')) return;
     const p = document.createElement('div'); p.id = 'xfm-panel';
-    p.innerHTML = `<b>X Follow Manager</b><div id="xfm-status">扫描中…</div>
+    p.innerHTML = `<h3>X Follow Manager</h3><div id="xfm-status">扫描中…</div>
       <label><input id="xfm-hide" type="checkbox" ${state.hideMutual?'checked':''}> 隐藏互关</label><br>
       <label>至少关注天数 <input id="xfm-age" type="number" min="0" value="${state.minAgeDays}"></label>
       <label>每日上限 <input id="xfm-limit" type="number" min="1" value="${state.dailyLimit}"></label><br>
@@ -254,5 +260,5 @@
     p.querySelector('#xfm-hidepanel').onclick=()=>p.remove();
     scan();
   }
-  setInterval(()=>location.pathname.endsWith('/following') || location.pathname.endsWith('/followers') ? panel() || scan() : document.querySelector('#xfm-panel')?.remove(), 1500);
+  setInterval(()=>['/following','/followers','/verified_followers'].some(x=>location.pathname.endsWith(x)) ? panel() || scan() : document.querySelector('#xfm-panel')?.remove(), 1500);
 })();

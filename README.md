@@ -23,6 +23,7 @@ If the browser displays the raw source directly, right-click the raw link and ch
 - `/following`: hide mutual follows, find non-followers, and show follower/following counts.
 - `/followers`：识别尚未回关的关注者，并手动执行回关。
 - `/followers`: find followers you do not follow back and follow them back manually.
+- `/verified_followers`: manage verified followers with the same follow-back workflow.
 - 白名单、认证/保护账号排除、简介关键词条件。
 - Whitelist, verified/protected-account exclusions, and bio-keyword filters.
 - 默认预览、逐项勾选、每日上限和操作间隔。

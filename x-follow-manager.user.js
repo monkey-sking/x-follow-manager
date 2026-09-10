@@ -237,6 +237,7 @@
 
   function panel() {
     if (document.querySelector('#xfm-panel')) return;
+    if (!document.body) return;
     const p = document.createElement('div'); p.id = 'xfm-panel';
     p.innerHTML = `<h3>X Follow Manager</h3><div id="xfm-status">扫描中…</div>
       <details open><summary>功能 / Actions</summary>
@@ -264,5 +265,12 @@
     p.querySelector('#xfm-hidepanel').onclick=()=>p.remove();
     scan();
   }
-  setInterval(()=>['/following','/followers','/verified_followers'].some(x=>location.pathname.endsWith(x)) ? panel() || scan() : document.querySelector('#xfm-panel')?.remove(), 1500);
+  const tick = () => {
+    try {
+      const active = ['/following','/followers','/verified_followers'].some(x=>location.pathname.endsWith(x));
+      if (active) { panel(); if (document.body) scan(); }
+      else document.querySelector('#xfm-panel')?.remove();
+    } catch (error) { console.warn('[X Follow Manager] initialization failed', error); }
+  };
+  setInterval(tick, 1500); tick();
 })();

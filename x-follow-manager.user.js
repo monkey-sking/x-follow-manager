@@ -122,6 +122,7 @@
   const isProtected = cell => !!cell.querySelector('[aria-label*="Protected"],[aria-label*="受保护"],[aria-label*="受保護"]');
   const isMutualSafe = (cell, nd) => {
     if (cell.querySelector('[data-testid="userFollowIndicator"]')) return true;
+    if (isMutual(cell)) return true;
     if (location.pathname.endsWith('/following')) return nd?.followedBy === true;
     if (location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers')) return nd?.following === true;
     return nd?.following === true && nd?.followedBy === true;

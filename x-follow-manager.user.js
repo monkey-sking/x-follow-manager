@@ -95,6 +95,7 @@
     .xfm-target { outline:2px solid #f4212e!important; background:rgba(244,33,46,.08)!important; }
     #xfm-panel { position:fixed; right:14px; top:70px; z-index:99999; width:350px; max-height:calc(100vh - 90px); overflow:auto; padding:16px; color:#0f1419; background:#fff; border:1px solid #cfd9de; border-radius:16px; box-shadow:0 8px 30px #0003; font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     #xfm-panel h3 { margin:0 0 5px; font-size:16px; } #xfm-panel .xfm-section { border-top:1px solid #eff3f4; margin-top:12px; padding-top:10px; }
+    #xfm-panel details { border-top:1px solid #eff3f4; margin-top:12px; padding-top:10px; } #xfm-panel summary { cursor:pointer; font-weight:700; margin-bottom:9px; }
     #xfm-panel button { border:0; border-radius:999px; padding:7px 11px; margin:3px; cursor:pointer; background:#1d9bf0; color:#fff; font-weight:600; }
     #xfm-panel button.warn { background:#f4212e; } #xfm-panel button.muted { background:#536471; }
     #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; border:1px solid #cfd9de; border-radius:8px; padding:6px; }
@@ -238,7 +239,12 @@
     if (document.querySelector('#xfm-panel')) return;
     const p = document.createElement('div'); p.id = 'xfm-panel';
     p.innerHTML = `<h3>X Follow Manager</h3><div id="xfm-status">扫描中…</div>
+      <details open><summary>功能 / Actions</summary>
       <label><input id="xfm-hide" type="checkbox" ${state.hideMutual?'checked':''}> 隐藏互关</label><br>
+      <label><input id="xfm-back" type="checkbox" ${state.autoFollowBack?'checked':''}> 允许关注者页面回关</label><br>
+      <button id="xfm-scan">重新扫描</button><button id="xfm-select">选中本屏符合条件</button><br><button id="xfm-back-now">执行回关</button>
+      <button id="xfm-run" class="warn">执行已勾选取关</button></details>
+      <details><summary>设置 / Settings</summary>
       <label>至少关注天数 <input id="xfm-age" type="number" min="0" value="${state.minAgeDays}"></label>
       <label>每日上限 <input id="xfm-limit" type="number" min="1" value="${state.dailyLimit}"></label><br>
       <label>间隔(ms) <input id="xfm-delay" type="number" min="2000" value="${state.delayMs}"></label><br>
@@ -246,10 +252,8 @@
       <label><input id="xfm-prot" type="checkbox" ${state.excludeProtected?'checked':''}> 排除保护账号</label>
       <textarea id="xfm-wl" rows="2" placeholder="白名单：@user1, @user2">${state.whitelist}</textarea>
       <label><input id="xfm-bio-on" type="checkbox" ${state.matchBio?'checked':''}> 简介命中关键词才纳入</label>
-      <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea>
-      <label><input id="xfm-back" type="checkbox" ${state.autoFollowBack?'checked':''}> 关注者页面自动回关</label><br>
-      <button id="xfm-scan">重新扫描</button><button id="xfm-select">选中本屏符合条件</button><button id="xfm-back-now">执行回关</button>
-      <button id="xfm-run" class="warn">执行已勾选取关</button><button id="xfm-hidepanel" class="muted">关闭面板</button>`;
+      <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea></details>
+      <button id="xfm-hidepanel" class="muted">关闭面板</button>`;
     document.body.appendChild(p);
     const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.dailyLimit=+p.querySelector('#xfm-limit').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; state.autoFollowBack=p.querySelector('#xfm-back').checked; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));

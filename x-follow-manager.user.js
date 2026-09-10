@@ -98,6 +98,7 @@
     #xfm-panel button { border:0; border-radius:999px; padding:7px 11px; margin:3px; cursor:pointer; background:#1d9bf0; color:#fff; font-weight:600; }
     #xfm-panel button.warn { background:#f4212e; } #xfm-panel button.muted { background:#536471; }
     #xfm-panel input { width:72px; margin-left:5px; } #xfm-panel textarea { width:100%; box-sizing:border-box; margin-top:5px; border:1px solid #cfd9de; border-radius:8px; padding:6px; }
+    #xfm-toggle { position:fixed; right:18px; bottom:18px; z-index:100000; width:42px; height:42px; border:0; border-radius:50%; background:#1d9bf0; color:#fff; font-size:20px; cursor:pointer; box-shadow:0 4px 14px #0003; }
     #xfm-status { margin:7px 2px; line-height:1.45; white-space:pre-line; }
   `;
   const mountStyle = () => (document.head || document.documentElement)?.appendChild(css);
@@ -257,22 +258,24 @@
       <textarea id="xfm-wl" rows="2" placeholder="白名单：@user1, @user2">${state.whitelist}</textarea>
       <label><input id="xfm-bio-on" type="checkbox" ${state.matchBio?'checked':''}> 简介命中关键词才纳入</label>
       <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea></details>
-      <button id="xfm-hidepanel" class="muted">关闭面板</button>`;
+      <button id="xfm-hidepanel" class="muted">缩小面板</button>`;
     document.body.appendChild(p);
+    const toggle = document.createElement('button'); toggle.id='xfm-toggle'; toggle.title='显示 X Follow Manager'; toggle.textContent='⚙'; toggle.hidden=true; document.body.appendChild(toggle);
     const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));
     p.querySelector('#xfm-scan').onclick=scan;
     p.querySelector('#xfm-select').onclick=()=>{ document.querySelectorAll('.xfm-check:not(:disabled)').forEach(x=>{x.checked=true; const h=handle(x.closest('[data-testid="UserCell"]') || x.closest('button'))?.toLowerCase(); if(h) state.selected.add(h);}); save(); scan(); };
     p.querySelector('#xfm-run').onclick=unfollowSelected;
     p.querySelector('#xfm-back-now').onclick=followBackVisible;
-    p.querySelector('#xfm-hidepanel').onclick=()=>p.remove();
+    p.querySelector('#xfm-hidepanel').onclick=()=>{ p.hidden=true; toggle.hidden=false; };
+    toggle.onclick=()=>{ p.hidden=false; toggle.hidden=true; };
     scan();
   }
   const tick = () => {
     try {
       const active = ['/following','/followers','/verified_followers'].some(x=>location.pathname.endsWith(x));
       if (active) { panel(); if (document.body) scan(); }
-      else document.querySelector('#xfm-panel')?.remove();
+      else { document.querySelector('#xfm-panel')?.remove(); document.querySelector('#xfm-toggle')?.remove(); }
     } catch (error) { console.warn('[X Follow Manager] initialization failed', error); }
   };
   setInterval(tick, 1500); tick();

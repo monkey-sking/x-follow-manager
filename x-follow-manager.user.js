@@ -9,6 +9,9 @@
 // @match        https://twitter.com/*/followers
 // @run-at       document-start
 // @grant        none
+// @noframes
+// @inject-into  page
+// @sandbox      raw
 // ==/UserScript==
 
 (function () {
@@ -34,6 +37,10 @@
     networkData: {}
   }, JSON.parse(localStorage.getItem(KEY) || '{}'));
   state.selected = new Set(state.selected || []);
+  let actionRunning = false;
+  const LIST_GRAPHQL_RE = /\/graphql\/[^/]+\/(?:Following|Followers|BlueVerifiedFollowers|FollowersYouKnow)(?:$|\?)/;
+  const requestUrl = input => typeof input === 'string' ? input : input?.url || '';
+  const isRelevantGraphQL = url => { try { return LIST_GRAPHQL_RE.test(new URL(url, location.href).pathname); } catch (_) { return false; } };
   const save = () => localStorage.setItem(KEY, JSON.stringify({ ...state, selected: [...state.selected] }));
 
   // X 的关注列表数据优先从同页网络响应读取；失败时仍使用 DOM。
@@ -44,13 +51,14 @@
       const legacy = value.legacy || value;
       const core = value.core || {};
       const h = legacy.screen_name || core.screen_name || value.screen_name;
-      if (h && (legacy.followers_count != null || legacy.following_count != null || value.relationship_perspective)) {
+      if (h && (legacy.followers_count != null || legacy.following_count != null || value.relationship_perspectives || value.relationship_perspective)) {
         const rel = value.relationship_perspectives || value.relationship_perspective || legacy.relationship_perspectives || legacy.relationship_perspective || {};
-        state.networkData[String(h).toLowerCase()] = {
+        const key = String(h).toLowerCase(), old = state.networkData[key] || {};
+        state.networkData[key] = {
           followers: legacy.followers_count ?? value.followers_count ?? null,
           followingCount: legacy.friends_count ?? legacy.following_count ?? value.friends_count ?? null,
-          following: rel.following ?? value.following ?? null,
-          followedBy: rel.followed_by ?? value.followed_by ?? null,
+          following: typeof (rel.following ?? legacy.following ?? value.following) === 'boolean' ? (rel.following ?? legacy.following ?? value.following) : old.following ?? null,
+          followedBy: typeof (rel.followed_by ?? legacy.followed_by ?? value.followed_by) === 'boolean' ? (rel.followed_by ?? legacy.followed_by ?? value.followed_by) : old.followedBy ?? null,
           verified: !!(value.is_blue_verified || legacy.verified || value.verified),
           capturedAt: Date.now()
         };
@@ -63,14 +71,14 @@
     const originalFetch = window.fetch;
     window.fetch = async function (...args) {
       const response = await originalFetch.apply(this, args);
-      try { response.clone().json().then(ingest).catch(() => {}); } catch (_) {}
+      if (isRelevantGraphQL(requestUrl(args[0]))) try { response.clone().json().then(ingest).catch(() => {}); } catch (_) {}
       return response;
     };
     const open = XMLHttpRequest.prototype.open;
     const send = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url) { this.__xfmUrl = String(url || ''); return open.apply(this, arguments); };
     XMLHttpRequest.prototype.send = function () {
-      this.addEventListener('load', () => { if (this.__xfmUrl.includes('/graphql/')) { try { ingest(JSON.parse(this.responseText)); } catch (_) {} } });
+      this.addEventListener('load', () => { if (isRelevantGraphQL(this.__xfmUrl)) { try { ingest(this.responseType === 'json' ? this.response : JSON.parse(this.responseText)); } catch (_) {} } });
       return send.apply(this, arguments);
     };
   };
@@ -100,13 +108,37 @@
   const isVerified = cell => !!cell.querySelector('[data-testid="icon-verified"],[aria-label*="Verified"],[aria-label*="认证"],[aria-label*="認證"]') ||
     [...cell.querySelectorAll('a[aria-label]')].some(a => /认证账号|認證帳號|Verified account/i.test(a.getAttribute('aria-label')));
   const isProtected = cell => !!cell.querySelector('[aria-label*="Protected"],[aria-label*="受保护"],[aria-label*="受保護"]');
+  const isMutualSafe = (cell, nd) => {
+    if (cell.querySelector('[data-testid="userFollowIndicator"]')) return true;
+    if (location.pathname.endsWith('/following')) return nd?.followedBy === true;
+    if (location.pathname.endsWith('/followers')) return nd?.following === true;
+    return nd?.following === true && nd?.followedBy === true;
+  };
+  const followButton = cell => [...cell.querySelectorAll('[data-testid$="-follow"],button,[role="button"]')].find(x => {
+    const a=x.getAttribute('aria-label')||''; return a.startsWith('Follow @') || a.startsWith('关注 @') || a.startsWith('關注 @');
+  });
+  const unfollowButton = cell => [...cell.querySelectorAll('[data-testid$="-unfollow"],button,[role="button"]')].find(x => {
+    const a=x.getAttribute('aria-label')||''; return a.startsWith('Following @') || a.startsWith('正在关注 @') || a.startsWith('正在關注 @');
+  });
+  const waitForElement = (selector, timeout=2500) => new Promise(resolve => {
+    const existing=document.querySelector(selector); if(existing){resolve(existing);return;}
+    const observer=new MutationObserver(()=>{const el=document.querySelector(selector);if(el){observer.disconnect();clearTimeout(timer);resolve(el);}});
+    observer.observe(document.documentElement,{childList:true,subtree:true}); const timer=setTimeout(()=>{observer.disconnect();resolve(null);},timeout);
+  });
+  const pageOwner = () => location.pathname.match(/^\/([^/]+)\/(?:following|followers)\/?$/)?.[1]?.toLowerCase() || null;
+  const loggedInHandle = () => { const a=document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]'); return (text(a).match(/@([A-Za-z0-9_]+)/)||[])[1]?.toLowerCase() || null; };
+  const assertOwnList = () => { const me=loggedInHandle(), owner=pageOwner(); if (!me || !owner || me!==owner) throw new Error('安全保护：仅允许在当前登录账号自己的列表页执行操作。'); };
+  const localDay = () => new Date().toISOString().slice(0,10);
+  const daily = () => { if (!state.daily || state.daily.day !== localDay()) state.daily={day:localDay(),follow:0,unfollow:0}; return state.daily; };
+  const remainingToday = () => Math.max(0, Number(state.dailyLimit||20)-daily().follow-daily().unfollow);
+  const recordAction = type => { daily()[type]++; save(); };
   const whitelist = () => new Set(state.whitelist.split(/[\s,，]+/).map(x => x.replace(/^@/, '').toLowerCase()).filter(Boolean));
   const userCells = () => {
     const marked = [...document.querySelectorAll('[data-testid="UserCell"]')];
     if (marked.length) return marked;
     return [...document.querySelectorAll('main button')].filter(b =>
       b.querySelector('a[href^="/"],a[href^="https://x.com/"]') &&
-      b.querySelector('button[aria-label*="正在关注"],button[aria-label*="Following"]')
+      b.querySelector('button[aria-label*="正在关注"],button[aria-label*="Following"],button[aria-label*="关注 @"],button[aria-label*="Follow @"]')
     );
   };
   const bioWords = () => state.bioKeywords.split(/[\s,，]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
@@ -149,8 +181,7 @@
       const nd = state.networkData[key];
       if (!state.seen[key]) state.seen[key] = now;
       cell.classList.remove('xfm-mutual', 'xfm-target');
-      const mutualFromNetwork = nd && (nd.followedBy === true || nd.following === true) ? nd.followedBy === true && nd.following === true : null;
-      if (mutualFromNetwork === true || (mutualFromNetwork === null && isMutual(cell))) { mutual++; if (state.hideMutual) cell.classList.add('xfm-mutual'); return; }
+      if (isMutualSafe(cell, nd)) { mutual++; if (state.hideMutual) cell.classList.add('xfm-mutual'); return; }
       candidates++;
       attachHoverCollector(cell, h);
       const ageDays = (now - state.seen[key]) / 86400000;
@@ -177,37 +208,24 @@
 
   const buttonByText = (root, names) => [...root.querySelectorAll('button')].find(b => names.some(n => text(b).includes(n)));
   async function unfollowSelected() {
-    if (state.dryRun && !confirm('当前是预览模式。确定要切换到真实取关执行吗？')) return;
-    state.dryRun = false; save();
+    if (actionRunning) return alert('已有操作正在执行。');
+    assertOwnList(); if (!location.pathname.endsWith('/following')) return alert('请在自己的正在关注页面执行取关。');
+    if (!confirm(`即将取关已选账号，今日剩余 ${remainingToday()} 个。确定继续？`)) return;
+    actionRunning = true;
     const cells = userCells().filter(c => state.selected.has(handle(c)?.toLowerCase()));
-    let done = 0;
-    for (const cell of cells) {
-      if (done >= Number(state.dailyLimit || 20)) break;
-      const b = [...cell.querySelectorAll('button,[role="button"]')].find(x => /^(Following|正在关注|正在關注)$/.test(x.getAttribute('aria-label') || text(x)));
-      if (!b) continue;
-      b.click(); await new Promise(r => setTimeout(r, 700));
-      const menu = document.querySelector('[role="menu"]');
-      const u = menu && [...menu.querySelectorAll('button,[role="menuitem"],[role="button"]')].find(x => /^(Unfollow|取消关注|取消關注)$/.test(x.getAttribute('aria-label') || text(x)));
-      if (!u) { state.dryRun = true; save(); alert('未找到确认菜单，已停止以避免误操作。'); return; }
-      u.click(); done++; await new Promise(r => setTimeout(r, Number(state.delayMs || 3500)));
-    }
-    state.selected.clear(); state.dryRun = true; save(); scan(); alert(`本次已执行 ${done} 个取关。`);
+    let done = 0; try { for (const cell of cells) {
+      if (!remainingToday()) break; const b=unfollowButton(cell); if(!b) continue;
+      if(document.querySelector('[data-testid="confirmationSheetConfirm"]')) throw new Error('页面已有未处理确认框。');
+      b.click(); const u=await waitForElement('[data-testid="confirmationSheetConfirm"]'); if(!u) throw new Error(`@${handle(cell)} 未出现确认框。`); u.click();
+      recordAction('unfollow'); state.selected.delete(handle(cell).toLowerCase()); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500)));
+    }} catch(e){ alert(e.message); } finally { actionRunning=false; save(); scan(); if(done) alert(`本次已执行 ${done} 个取关。`); }
   }
 
   async function followBackVisible() {
-    if (!state.autoFollowBack) return;
-    const candidates = [...document.querySelectorAll('main button')].filter(b =>
-      b.querySelector('a[href^="/"],a[href^="https://x.com/"]') &&
-      [...b.querySelectorAll('button,[role="button"]')].some(x => /^(Follow|关注)$/.test(x.getAttribute('aria-label') || text(x)))
-    );
+    if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!location.pathname.endsWith('/followers')) return alert('请在自己的关注者页面执行回关。'); if (!state.autoFollowBack) return;
+    const candidates = userCells().filter(b => !!followButton(b));
     if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，最多执行 ${state.dailyLimit} 个？`)) return;
-    let done = 0;
-    for (const cell of candidates) {
-      if (done >= Number(state.dailyLimit || 20)) break;
-      const b = [...cell.querySelectorAll('button,[role="button"]')].find(x => /^(Follow|关注)$/.test(x.getAttribute('aria-label') || text(x)));
-      if (!b) continue; b.click(); done++; await new Promise(r => setTimeout(r, Number(state.delayMs || 3500)));
-    }
-    alert(`本次已回关 ${done} 个账号。`);
+    actionRunning=true; let done=0; try { for(const cell of candidates){ if(!remainingToday()) break; const b=followButton(cell); if(!b) continue; b.click(); recordAction('follow'); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
   }
 
   function panel() {
@@ -236,5 +254,5 @@
     p.querySelector('#xfm-hidepanel').onclick=()=>p.remove();
     scan();
   }
-  setInterval(()=>location.pathname.endsWith('/following') ? panel() || scan() : document.querySelector('#xfm-panel')?.remove(), 1500);
+  setInterval(()=>location.pathname.endsWith('/following') || location.pathname.endsWith('/followers') ? panel() || scan() : document.querySelector('#xfm-panel')?.remove(), 1500);
 })();

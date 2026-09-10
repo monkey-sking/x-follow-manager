@@ -26,8 +26,8 @@ If the browser displays the raw source directly, right-click the raw link and ch
 - `/verified_followers`: manage verified followers with the same follow-back workflow.
 - 白名单、认证/保护账号排除、简介关键词条件。
 - Whitelist, verified/protected-account exclusions, and bio-keyword filters.
-- 默认预览、逐项勾选、每日上限和操作间隔。
-- Dry-run-first workflow, per-account selection, daily limits, and delays.
+- 默认预览、逐项勾选和操作间隔。
+- Dry-run-first workflow, per-account selection, and configurable delays.
 - 数据只在当前浏览器本地处理，不发送到第三方服务。
 - Data is processed locally in the browser and is not sent to third-party services.
 

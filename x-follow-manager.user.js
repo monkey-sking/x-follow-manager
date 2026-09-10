@@ -2,7 +2,7 @@
 // @name         X Follow Manager - 互关与条件取关
 // @namespace    local.x-follow-manager
 // @version      1.1.0
-// @description  X 关注管理：网络数据解析、互关识别、未回关条件取关、关注者自动回关、白名单、限速与每日上限。
+// @description  X 关注管理：网络数据解析、互关识别、未回关条件取关、关注者自动回关、白名单与限速。
 // @author       monkey-sking
 // @homepageURL  https://github.com/monkey-sking/x-follow-manager
 // @supportURL   https://github.com/monkey-sking/x-follow-manager/issues
@@ -27,7 +27,6 @@
     hideMutual: true,
     minAgeDays: 7,
     delayMs: 3500,
-    dailyLimit: 20,
     excludeVerified: true,
     excludeProtected: true,
     whitelist: '',
@@ -135,10 +134,6 @@
   const pageOwner = () => location.pathname.match(/^\/([^/]+)\/(?:following|followers|verified_followers)\/?$/)?.[1]?.toLowerCase() || null;
   const loggedInHandle = () => { const a=document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]'); return (text(a).match(/@([A-Za-z0-9_]+)/)||[])[1]?.toLowerCase() || null; };
   const assertOwnList = () => { const me=loggedInHandle(), owner=pageOwner(); if (!me || !owner || me!==owner) throw new Error('安全保护：仅允许在当前登录账号自己的列表页执行操作。'); };
-  const localDay = () => new Date().toISOString().slice(0,10);
-  const daily = () => { if (!state.daily || state.daily.day !== localDay()) state.daily={day:localDay(),follow:0,unfollow:0}; return state.daily; };
-  const remainingToday = () => Math.max(0, Number(state.dailyLimit||20)-daily().follow-daily().unfollow);
-  const recordAction = type => { daily()[type]++; save(); };
   const whitelist = () => new Set(state.whitelist.split(/[\s,，]+/).map(x => x.replace(/^@/, '').toLowerCase()).filter(Boolean));
   const userCells = () => {
     const marked = [...document.querySelectorAll('[data-testid="UserCell"]')];
@@ -211,29 +206,29 @@
     });
     save();
     const s = document.querySelector('#xfm-status');
-    if (s) s.textContent = `本屏：互关 ${mutual} · 未回关 ${candidates} · 符合条件 ${eligible}\n已勾选 ${state.selected.size} · 今日上限 ${state.dailyLimit} · ${state.dryRun ? '预览模式' : '执行模式'}`;
+    if (s) s.textContent = `本屏：互关 ${mutual} · 未回关 ${candidates} · 符合条件 ${eligible}\n已勾选 ${state.selected.size} · ${state.dryRun ? '预览模式' : '执行模式'}`;
   }
 
   const buttonByText = (root, names) => [...root.querySelectorAll('button')].find(b => names.some(n => text(b).includes(n)));
   async function unfollowSelected() {
     if (actionRunning) return alert('已有操作正在执行。');
     assertOwnList(); if (!location.pathname.endsWith('/following')) return alert('请在自己的正在关注页面执行取关。');
-    if (!confirm(`即将取关已选账号，今日剩余 ${remainingToday()} 个。确定继续？`)) return;
+    if (!confirm('即将取关已选账号。确定继续？')) return;
     actionRunning = true;
     const cells = userCells().filter(c => state.selected.has(handle(c)?.toLowerCase()));
     let done = 0; try { for (const cell of cells) {
-      if (!remainingToday()) break; const b=unfollowButton(cell); if(!b) continue;
+      const b=unfollowButton(cell); if(!b) continue;
       if(document.querySelector('[data-testid="confirmationSheetConfirm"]')) throw new Error('页面已有未处理确认框。');
       b.click(); const u=await waitForElement('[data-testid="confirmationSheetConfirm"]'); if(!u) throw new Error(`@${handle(cell)} 未出现确认框。`); u.click();
-      recordAction('unfollow'); state.selected.delete(handle(cell).toLowerCase()); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500)));
+      state.selected.delete(handle(cell).toLowerCase()); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500)));
     }} catch(e){ alert(e.message); } finally { actionRunning=false; save(); scan(); if(done) alert(`本次已执行 ${done} 个取关。`); }
   }
 
   async function followBackVisible() {
     if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!(location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers'))) return alert('请在自己的关注者页面执行回关。');
     const candidates = userCells().filter(b => !!followButton(b));
-    if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，最多执行 ${state.dailyLimit} 个？`)) return;
-    actionRunning=true; let done=0; try { for(const cell of candidates){ if(!remainingToday()) break; const b=followButton(cell); if(!b) continue; b.click(); recordAction('follow'); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
+    if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，确定执行？`)) return;
+    actionRunning=true; let done=0; try { for(const cell of candidates){ const b=followButton(cell); if(!b) continue; b.click(); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
   }
 
   function panel() {
@@ -247,7 +242,6 @@
       <button id="xfm-run" class="warn">执行已勾选取关</button></details>
       <details><summary>设置 / Settings</summary>
       <label>至少关注天数 <input id="xfm-age" type="number" min="0" value="${state.minAgeDays}"></label>
-      <label>每日上限 <input id="xfm-limit" type="number" min="1" value="${state.dailyLimit}"></label><br>
       <label>间隔(ms) <input id="xfm-delay" type="number" min="2000" value="${state.delayMs}"></label><br>
       <label><input id="xfm-ver" type="checkbox" ${state.excludeVerified?'checked':''}> 排除认证账号</label>
       <label><input id="xfm-prot" type="checkbox" ${state.excludeProtected?'checked':''}> 排除保护账号</label>
@@ -256,7 +250,7 @@
       <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea></details>
       <button id="xfm-hidepanel" class="muted">关闭面板</button>`;
     document.body.appendChild(p);
-    const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.dailyLimit=+p.querySelector('#xfm-limit').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
+    const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));
     p.querySelector('#xfm-scan').onclick=scan;
     p.querySelector('#xfm-select').onclick=()=>{ document.querySelectorAll('.xfm-check:not(:disabled)').forEach(x=>{x.checked=true; const h=handle(x.closest('[data-testid="UserCell"]') || x.closest('button'))?.toLowerCase(); if(h) state.selected.add(h);}); save(); scan(); };

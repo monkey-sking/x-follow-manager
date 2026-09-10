@@ -92,6 +92,7 @@
   const css = document.createElement('style');
   css.textContent = `
     .xfm-mutual { opacity:.16!important; }
+    .xfm-hide-mutual .xfm-mutual { display:none!important; }
     .xfm-target { outline:2px solid #f4212e!important; background:rgba(244,33,46,.08)!important; }
     #xfm-panel { position:fixed; right:14px; top:70px; z-index:99999; width:350px; max-height:calc(100vh - 90px); overflow:auto; padding:16px; color:#0f1419; background:#fff; border:1px solid #cfd9de; border-radius:16px; box-shadow:0 8px 30px #0003; font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
     #xfm-panel h3 { margin:0 0 5px; font-size:16px; } #xfm-panel .xfm-section { border-top:1px solid #eff3f4; margin-top:12px; padding-top:10px; }
@@ -181,6 +182,7 @@
   function scan() {
     const now = Date.now();
     const wl = whitelist();
+    document.body?.classList.toggle('xfm-hide-mutual', state.hideMutual);
     let mutual = 0, candidates = 0, eligible = 0;
     userCells().forEach(cell => {
       const h = handle(cell); if (!h) return;

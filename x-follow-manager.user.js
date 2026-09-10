@@ -120,6 +120,10 @@
     if (location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers')) return nd?.following === true;
     return nd?.following === true && nd?.followedBy === true;
   };
+  const isFollowerSafe = (cell, nd) =>
+    !!cell.querySelector('[data-testid="userFollowIndicator"]') ||
+    isMutual(cell) ||
+    nd?.followedBy === true;
   const followButton = cell => [...cell.querySelectorAll('[data-testid$="-follow"],button,[role="button"]')].find(x => {
     const a=x.getAttribute('aria-label')||''; return a.startsWith('Follow @') || a.startsWith('关注 @') || a.startsWith('關注 @');
   });
@@ -226,7 +230,12 @@
 
   async function followBackVisible() {
     if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!(location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers'))) return alert('请在自己的关注者页面执行回关。');
-    const candidates = userCells().filter(b => !!followButton(b));
+    const candidates = userCells().filter(b => {
+      const h = handle(b)?.toLowerCase();
+      const nd = h ? state.networkData[h] : null;
+      // followers 页面混有推荐账号；没有“关注了你”证据时绝不回关。
+      return !!h && isFollowerSafe(b, nd) && !!followButton(b);
+    });
     if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，确定执行？`)) return;
     actionRunning=true; let done=0; try { for(const cell of candidates){ const b=followButton(cell); if(!b) continue; b.click(); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
   }

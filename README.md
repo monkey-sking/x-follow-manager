@@ -21,7 +21,7 @@ If the browser displays the raw source directly, right-click the raw link and ch
 
 - `/following`：隐藏互关、筛选未回关、显示关注者/关注中数量。
 - `/following`: hide mutual follows, find non-followers, and show follower/following counts.
-- `/followers`：识别尚未回关的关注者，并手动执行回关。
+- `/followers`：识别尚未回关的关注者，并通过明确按钮执行回关。
 - `/followers`: find followers you do not follow back and follow them back manually.
 - `/verified_followers`: manage verified followers with the same follow-back workflow.
 - 白名单、认证/保护账号排除、简介关键词条件。
@@ -33,9 +33,9 @@ If the browser displays the raw source directly, right-click the raw link and ch
 
 ## 使用 / Usage
 
-在 X 的“正在关注”或“关注者”页面打开脚本面板。自动回关默认关闭，需要手动开启并点击“执行回关”。
+在 X 的“正在关注”或“关注者”页面打开脚本面板。取关需要逐项勾选；回关通过明确按钮执行，并在执行前确认数量。
 
-Open the script panel on X's Following or Followers page. Follow-back is disabled by default; enable it and click “执行回关 / Follow back” when ready.
+Open the script panel on X's Following or Followers page. Unfollow requires per-account selection; follow-back uses an explicit action button and confirms the count before execution.
 
 脚本优先解析 X 当前页面的 GraphQL 响应，无法解析时回退到 DOM。取关和回关都会改变账号状态，请低频、少量操作，并先使用预览和白名单。
 

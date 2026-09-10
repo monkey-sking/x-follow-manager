@@ -28,7 +28,6 @@
     minAgeDays: 7,
     delayMs: 3500,
     dailyLimit: 20,
-    autoFollowBack: false,
     excludeVerified: true,
     excludeProtected: true,
     whitelist: '',
@@ -231,7 +230,7 @@
   }
 
   async function followBackVisible() {
-    if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!(location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers'))) return alert('请在自己的关注者页面执行回关。'); if (!state.autoFollowBack) return;
+    if (actionRunning) return alert('已有操作正在执行。'); assertOwnList(); if (!(location.pathname.endsWith('/followers') || location.pathname.endsWith('/verified_followers'))) return alert('请在自己的关注者页面执行回关。');
     const candidates = userCells().filter(b => !!followButton(b));
     if (!candidates.length || !confirm(`发现 ${candidates.length} 个可回关账号，最多执行 ${state.dailyLimit} 个？`)) return;
     actionRunning=true; let done=0; try { for(const cell of candidates){ if(!remainingToday()) break; const b=followButton(cell); if(!b) continue; b.click(); recordAction('follow'); done++; await new Promise(r=>setTimeout(r,Number(state.delayMs||3500))); } } finally { actionRunning=false; save(); } alert(`本次已回关 ${done} 个账号。`);
@@ -244,8 +243,7 @@
     p.innerHTML = `<h3>X Follow Manager</h3><div id="xfm-status">扫描中…</div>
       <details open><summary>功能 / Actions</summary>
       <label><input id="xfm-hide" type="checkbox" ${state.hideMutual?'checked':''}> 隐藏互关</label><br>
-      <label><input id="xfm-back" type="checkbox" ${state.autoFollowBack?'checked':''}> 允许关注者页面回关</label><br>
-      <button id="xfm-scan">重新扫描</button><button id="xfm-select">选中本屏符合条件</button><br><button id="xfm-back-now">执行回关</button>
+      <button id="xfm-scan">重新扫描</button><button id="xfm-select">选中本屏符合条件</button><br><button id="xfm-back-now">回关当前列表未关注账号</button>
       <button id="xfm-run" class="warn">执行已勾选取关</button></details>
       <details><summary>设置 / Settings</summary>
       <label>至少关注天数 <input id="xfm-age" type="number" min="0" value="${state.minAgeDays}"></label>
@@ -258,7 +256,7 @@
       <textarea id="xfm-bio" rows="2" placeholder="简介关键词：空投, 返佣, referral">${state.bioKeywords}</textarea></details>
       <button id="xfm-hidepanel" class="muted">关闭面板</button>`;
     document.body.appendChild(p);
-    const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.dailyLimit=+p.querySelector('#xfm-limit').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; state.autoFollowBack=p.querySelector('#xfm-back').checked; save(); scan(); };
+    const sync = () => { state.hideMutual=p.querySelector('#xfm-hide').checked; state.minAgeDays=+p.querySelector('#xfm-age').value; state.dailyLimit=+p.querySelector('#xfm-limit').value; state.delayMs=+p.querySelector('#xfm-delay').value; state.excludeVerified=p.querySelector('#xfm-ver').checked; state.excludeProtected=p.querySelector('#xfm-prot').checked; state.whitelist=p.querySelector('#xfm-wl').value; state.matchBio=p.querySelector('#xfm-bio-on').checked; state.bioKeywords=p.querySelector('#xfm-bio').value; save(); scan(); };
     p.querySelectorAll('input,textarea').forEach(x => x.addEventListener('change', sync));
     p.querySelector('#xfm-scan').onclick=scan;
     p.querySelector('#xfm-select').onclick=()=>{ document.querySelectorAll('.xfm-check:not(:disabled)').forEach(x=>{x.checked=true; const h=handle(x.closest('[data-testid="UserCell"]') || x.closest('button'))?.toLowerCase(); if(h) state.selected.add(h);}); save(); scan(); };

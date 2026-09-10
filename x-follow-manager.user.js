@@ -23,6 +23,8 @@
   'use strict';
 
   const KEY = 'x-follow-manager:v1';
+  const OUR_HANDLE = '168888888888888';
+  const OUR_PROFILE_URL = `https://x.com/${OUR_HANDLE}`;
   const state = Object.assign({
     hideMutual: true,
     minAgeDays: 7,
@@ -268,6 +270,7 @@
     p.querySelector('#xfm-run').onclick=unfollowSelected;
     p.querySelector('#xfm-back-now').onclick=followBackVisible;
     p.querySelector('#xfm-hidepanel').onclick=()=>{ p.hidden=true; toggle.hidden=false; };
+    const followUs = document.createElement('button'); followUs.textContent='关注我们 @168888888888888'; followUs.title='打开我们的 X 主页'; followUs.onclick=()=>window.open(OUR_PROFILE_URL, '_blank', 'noopener'); p.insertBefore(followUs, p.querySelector('#xfm-hidepanel'));
     toggle.onclick=()=>{ p.hidden=false; toggle.hidden=true; };
     scan();
   }

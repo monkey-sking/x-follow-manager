@@ -4,6 +4,8 @@
 
 Local userscript for X/Twitter. It detects mutual and non-mutual follows, reads user data from X page responses, and provides controlled conditional unfollow and follow-back actions.
 
+项目账号 / Project account: [@168888888888888](https://x.com/168888888888888)
+
 ## 安装 / Installation
 
 安装 Tampermonkey、Violentmonkey 或 Userscripts 后，直接点击即可安装，无需复制粘贴：

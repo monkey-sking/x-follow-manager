@@ -1,5 +1,9 @@
 # X Follow Manager
 
+<!-- badges:start -->
+[![Last commit](https://img.shields.io/github/last-commit/monkey-sking/x-follow-manager?style=flat-square)](https://github.com/monkey-sking/x-follow-manager/commits/main) [![JavaScript](https://img.shields.io/github/languages/top/monkey-sking/x-follow-manager?style=flat-square)](https://github.com/monkey-sking/x-follow-manager/search?l=JavaScript) [![views](https://hits.sh/github.com/monkey-sking/x-follow-manager.svg?style=flat-square&label=views&color=0e75b6)](https://github.com/monkey-sking/x-follow-manager)
+<!-- badges:end -->
+
 用于 X/Twitter 的本地用户脚本：识别互关与未回关账号，读取页面自身网络响应中的用户数据，并提供受控的条件取关与自动回关。
 
 Local userscript for X/Twitter. It detects mutual and non-mutual follows, reads user data from X page responses, and provides controlled conditional unfollow and follow-back actions.
